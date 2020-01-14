@@ -64,14 +64,14 @@ app.post("/convertion1", (req, res) => {
         reject(new Error("No se puede leer el directorio"));
       } else {
         workbook = XLSX.readFile(`${directoryPath}\\${name}`);
-        let reading = workbook =>
-          // resolve(
+
+        let reading = workbook => {
           XLSX.writeFile(workbook, `${directoryOut}\\outxt`, {
             bookType: "csv"
           });
-        //  );
-        resolve(`${directoryOut}\\outxt`);
+        };
         reading(workbook);
+        resolve(`${directoryOut}\\outxt`);
       }
     });
   };
@@ -81,7 +81,7 @@ app.post("/convertion1", (req, res) => {
       if (`${toRead}` === "") {
         reject(new Error("no se puede leer el csv "));
       } else {
-        csvtojson()
+        csvtojson({ noheader: true, trim: true })
           .fromFile(`${toRead}`)
           .then(source => {
             let data = JSON.stringify(source, null, 2);
@@ -111,6 +111,62 @@ app.post("/convertion1", (req, res) => {
     console.log(terceraAccion, " ahora tienes un json para leer");
   }
   allWork();
+});
+
+app.post("/converter2", (req, res) => {
+  console.log("estas en converter2");
+  let hojaFile = req.files.file;
+  console.log(hojaFile);
+  const guardaArchivo = file => {
+    return new Promise((resolve, reject) => {
+      //setTimeout(resolve, 2000, "has guardado y movido");
+      if (file.name === "") {
+        reject(new Error("Fallo lectura"));
+      } else {
+        file.mv(`src\\uploads\\${file.name}`, err => {
+          if (err) {
+            console.log(err);
+          }
+          resolve(file.name);
+          return file.name;
+        });
+      }
+    });
+  }; //*final de guardar archivo
+  const transFile = name => {
+    return new Promise((resolve, reject) => {
+      let leidoexcel = XLSX.readFile(`${directoryPath}\\${name}`, {
+        cellDates: true
+      });
+      let tabs = leidoexcel.SheetNames;
+      function construcWorkSheet(tabs) {
+        tabs.forEach((tab, index) => {
+          console.log(`cada una de las tabs = ${tab} y su indice es ${index}`);
+          let worksheet = leidoexcel.Sheets[tab];
+          let data = XLSX.utils.sheet_to_json(worksheet);
+          writeJsonToFolder(data, tab);
+        });
+      }
+
+      function writeJsonToFolder(file, name) {
+        fs.writeFileSync(
+          `${directoryOut}\\output_${name}.json`,
+          JSON.stringify(file, null, 2)
+        );
+      }
+      construcWorkSheet(tabs);
+      // writeJsonToFolder(data);
+    });
+  };
+  async function transferWork() {
+    const paso1 = await guardaArchivo(hojaFile);
+    const paso2 = await transFile(paso1);
+  }
+  transferWork();
+  // let ocsv = XLSX.utils.sheet_to_csv(ws);
+  // fs.writeFileSync(`${directoryOut}\\exit2`, ocsv);
+  // let data = XLSX.utils.sheet_to_json(ws);
+  // fs.writeFileSync(`${directoryOut}\\exit.json`, JSON.stringify(data, null, 2));
 });
 
 app.listen(4200, () => {
